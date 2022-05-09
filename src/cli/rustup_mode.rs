@@ -5,8 +5,8 @@ use std::process::Command;
 use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Error, Result};
-use clap::{Command as ClapCommand, AppSettings, Arg, ArgGroup, ArgMatches, ValueHint};
-use clap_complete::{Shell, shells};
+use clap::{AppSettings, Arg, ArgGroup, ArgMatches, Command as ClapCommand, ValueHint};
+use clap_complete::{shells, Shell};
 
 use super::help::*;
 use super::self_update;
@@ -73,7 +73,7 @@ pub fn main() -> Result<utils::ExitCode> {
                 HelpDisplayed => {
                     writeln!(process().stdout().lock(), "{}", ce.to_string())?;
                     return Ok(utils::ExitCode(0));
-                },
+                }
                 VersionDisplayed => {
                     writeln!(process().stdout().lock(), "{}", ce.to_string())?;
                     info!("This is the version for the rustup toolchain manager, not the rustc compiler.");
@@ -203,9 +203,9 @@ pub(crate) fn cli() -> ClapCommand<'static> {
         .version(common::version())
         .about("The Rust toolchain installer")
         .after_help(RUSTUP_HELP)
-        .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::DeriveDisplayOrder)
-        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
+        .subcommand_required(true)
         .arg(
             Arg::new("verbose")
                 .help("Enable verbose output")
@@ -239,7 +239,6 @@ pub(crate) fn cli() -> ClapCommand<'static> {
             ClapCommand::new("show")
                 .about("Show the active and installed toolchains or profiles")
                 .after_help(SHOW_HELP)
-                .setting(AppSettings::VersionlessSubcommands)
                 .setting(AppSettings::DeriveDisplayOrder)
                 .subcommand(
                     ClapCommand::new("active-toolchain")
@@ -346,9 +345,9 @@ pub(crate) fn cli() -> ClapCommand<'static> {
             ClapCommand::new("toolchain")
                 .about("Modify or query the installed toolchains")
                 .after_help(TOOLCHAIN_HELP)
-                .setting(AppSettings::VersionlessSubcommands)
                 .setting(AppSettings::DeriveDisplayOrder)
-                .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
+        .subcommand_required(true)
                 .subcommand(
                     ClapCommand::new("list")
                         .about("List installed toolchains")
@@ -447,9 +446,9 @@ pub(crate) fn cli() -> ClapCommand<'static> {
         .subcommand(
             ClapCommand::new("target")
                 .about("Modify a toolchain's supported targets")
-                .setting(AppSettings::VersionlessSubcommands)
                 .setting(AppSettings::DeriveDisplayOrder)
-                .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
+        .subcommand_required(true)
                 .subcommand(
                     ClapCommand::new("list")
                         .about("List installed and available targets")
@@ -496,9 +495,9 @@ pub(crate) fn cli() -> ClapCommand<'static> {
         .subcommand(
             ClapCommand::new("component")
                 .about("Modify a toolchain's installed components")
-                .setting(AppSettings::VersionlessSubcommands)
                 .setting(AppSettings::DeriveDisplayOrder)
-                .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
+        .subcommand_required(true)
                 .subcommand(
                     ClapCommand::new("list")
                         .about("List installed and available components")
@@ -543,9 +542,9 @@ pub(crate) fn cli() -> ClapCommand<'static> {
             ClapCommand::new("override")
                 .about("Modify directory toolchain overrides")
                 .after_help(OVERRIDE_HELP)
-                .setting(AppSettings::VersionlessSubcommands)
                 .setting(AppSettings::DeriveDisplayOrder)
-                .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg_required_else_help(true)
+        .subcommand_required(true)
                 .subcommand(
                     ClapCommand::new("list").about("List directory toolchain overrides"),
                 )
@@ -631,7 +630,7 @@ pub(crate) fn cli() -> ClapCommand<'static> {
                 .args(
                     &DOCS_DATA
                         .iter()
-                        .map(|(name, help_msg, _)| Arg::new(name).long(name).help(help_msg))
+                        .map(|(name, help_msg, _)| Arg::new(*name).long(*name).help(*help_msg))
                         .collect::<Vec<_>>(),
                 )
                 .arg(
@@ -641,7 +640,7 @@ pub(crate) fn cli() -> ClapCommand<'static> {
                         .takes_value(true),
                 )
                 .group(
-                    ArgGroup::with_name("page").args(
+                    ArgGroup::new("page").args(
                         &DOCS_DATA
                             .iter()
                             .map(|(name, _, _)| *name)
@@ -669,9 +668,9 @@ pub(crate) fn cli() -> ClapCommand<'static> {
         .subcommand(
             ClapCommand::new("self")
                 .about("Modify the rustup installation")
-                .setting(AppSettings::VersionlessSubcommands)
                 .setting(AppSettings::DeriveDisplayOrder)
-                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .arg_required_else_help(true)
+                .subcommand_required(true)
                 .subcommand(
                     ClapCommand::new("update").about("Download and install updates to rustup"),
                 )
@@ -681,14 +680,14 @@ pub(crate) fn cli() -> ClapCommand<'static> {
                         .arg(Arg::new("no-prompt").short('y')),
                 )
                 .subcommand(
-                    ClapCommand::new("upgrade-data")
-                        .about("Upgrade the internal data format."),
+                    ClapCommand::new("upgrade-data").about("Upgrade the internal data format."),
                 ),
         )
         .subcommand(
             ClapCommand::new("set")
                 .about("Alter rustup settings")
-                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .arg_required_else_help(true)
+                .subcommand_required(true)
                 .subcommand(
                     ClapCommand::new("default-host")
                         .about("The triple used to identify toolchains when not specified")
@@ -730,7 +729,7 @@ pub(crate) fn cli() -> ClapCommand<'static> {
         ClapCommand::new("completions")
             .about("Generate tab-completion scripts for your shell")
             .after_help(COMPLETIONS_HELP)
-            .setting(AppSettings::ArgRequiredElseHelp)
+            .arg_required_else_help(true)
             .arg(Arg::new("shell").possible_values(&Shell::variants()))
             .arg(
                 Arg::new("command")

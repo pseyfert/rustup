@@ -91,7 +91,7 @@ pub fn main() -> Result<utils::ExitCode> {
                 .help("Don't configure the PATH environment variable"),
         );
 
-    let matches = match cli.get_matches_from_safe(process().args_os()) {
+    let matches = match cli.try_get_matches_from(process().args_os()) {
         Ok(matches) => matches,
         Err(e)
             if e.kind() == clap::ErrorKind::DisplayHelp
