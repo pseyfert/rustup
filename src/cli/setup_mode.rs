@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{App, AppSettings, Arg};
+use clap::{Command, AppSettings, Arg};
 
 use super::common;
 use super::self_update::{self, InstallOpts};
@@ -23,71 +23,70 @@ pub fn main() -> Result<utils::ExitCode> {
     }
 
     // XXX: If you change anything here, please make the same changes in rustup-init.sh
-    let cli = App::new("rustup-init")
+    let cli = Command::new("rustup-init")
         .version(common::version())
         .about("The installer for rustup")
         .setting(AppSettings::DeriveDisplayOrder)
         .arg(
-            Arg::with_name("verbose")
-                .short("v")
+            Arg::new("verbose")
+                .short('v')
                 .long("verbose")
                 .help("Enable verbose output"),
         )
         .arg(
-            Arg::with_name("quiet")
+            Arg::new("quiet")
                 .conflicts_with("verbose")
-                .short("q")
+                .short('q')
                 .long("quiet")
                 .help("Disable progress output"),
         )
         .arg(
-            Arg::with_name("no-prompt")
-                .short("y")
+            Arg::new("no-prompt")
+                .short('y')
                 .help("Disable confirmation prompt."),
         )
         .arg(
-            Arg::with_name("default-host")
+            Arg::new("default-host")
                 .long("default-host")
                 .takes_value(true)
                 .help("Choose a default host triple"),
         )
         .arg(
-            Arg::with_name("default-toolchain")
+            Arg::new("default-toolchain")
                 .long("default-toolchain")
                 .takes_value(true)
                 .help("Choose a default toolchain to install"),
         )
         .arg(
-            Arg::with_name("profile")
+            Arg::new("profile")
                 .long("profile")
                 .possible_values(Profile::names())
                 .default_value(Profile::default_name()),
         )
         .arg(
-            Arg::with_name("components")
+            Arg::new("components")
                 .help("Component name to also install")
                 .long("component")
-                .short("c")
+                .short('c')
                 .takes_value(true)
                 .multiple(true)
-                .use_delimiter(true),
+                .use_value_delimiter(true),
         )
         .arg(
-            Arg::with_name("targets")
+            Arg::new("targets")
                 .help("Target name to also install")
                 .long("target")
-                .short("target")
                 .takes_value(true)
                 .multiple(true)
-                .use_delimiter(true),
+                .use_value_delimiter(true),
         )
         .arg(
-            Arg::with_name("no-update-default-toolchain")
+            Arg::new("no-update-default-toolchain")
                 .long("no-update-default-toolchain")
                 .help("Don't update any existing default toolchain after install"),
         )
         .arg(
-            Arg::with_name("no-modify-path")
+            Arg::new("no-modify-path")
                 .long("no-modify-path")
                 .help("Don't configure the PATH environment variable"),
         );
@@ -95,10 +94,10 @@ pub fn main() -> Result<utils::ExitCode> {
     let matches = match cli.get_matches_from_safe(process().args_os()) {
         Ok(matches) => matches,
         Err(e)
-            if e.kind == clap::ErrorKind::HelpDisplayed
-                || e.kind == clap::ErrorKind::VersionDisplayed =>
+            if e.kind() == clap::ErrorKind::DisplayHelp
+                || e.kind() == clap::ErrorKind::DisplayVersion =>
         {
-            writeln!(process().stdout().lock(), "{}", e.message)?;
+            writeln!(process().stdout().lock(), "{}", e.to_string())?;
             return Ok(utils::ExitCode(0));
         }
         Err(e) => return Err(e.into()),
