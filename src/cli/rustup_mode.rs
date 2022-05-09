@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Error, Result};
 use clap::{AppSettings, Arg, ArgGroup, ArgMatches, Command as ClapCommand, ValueHint};
-use clap_complete::{shells, Shell};
+use clap_complete::{Shell, generate};
 
 use super::help::*;
 use super::self_update;
@@ -66,15 +66,15 @@ pub fn main() -> Result<utils::ExitCode> {
     self_update::cleanup_self_updater()?;
 
     use clap::ErrorKind::*;
-    let matches = match cli().get_matches_from_safe(process().args_os()) {
+    let matches = match cli().try_get_matches_from(process().args_os()) {
         Ok(matches) => Ok(matches),
         Err(ce) => {
             match ce.kind() {
-                HelpDisplayed => {
+                DisplayHelp => {
                     writeln!(process().stdout().lock(), "{}", ce.to_string())?;
                     return Ok(utils::ExitCode(0));
                 }
-                VersionDisplayed => {
+                DisplayVersion => {
                     writeln!(process().stdout().lock(), "{}", ce.to_string())?;
                     info!("This is the version for the rustup toolchain manager, not the rustc compiler.");
 
@@ -226,7 +226,7 @@ pub(crate) fn cli() -> ClapCommand<'static> {
                     if s.starts_with('+') {
                         Ok(())
                     } else {
-                        Err("Toolchain overrides must begin with '+'".into())
+                        Err(String::from("Toolchain overrides must begin with '+'"))
                     }
                 }),
         )
@@ -587,7 +587,7 @@ pub(crate) fn cli() -> ClapCommand<'static> {
             ClapCommand::new("run")
                 .about("Run a command with an environment configured for a given toolchain")
                 .after_help(RUN_HELP)
-                .setting(AppSettings::TrailingVarArg)
+                .trailing_var_arg(true)
                 .arg(
                     Arg::new("install")
                         .help("Install the requested toolchain if needed")
@@ -720,9 +720,8 @@ pub(crate) fn cli() -> ClapCommand<'static> {
     // creates lists out all the conditions where the "shell" argument are
     // provided and give the default of "rustup". This way if "shell" is not
     // provided then the help will still be printed.
-    let completion_defaults = Shell::variants()
-        .iter()
-        .map(|&shell| ("shell", Some(shell), "rustup"))
+    let completion_defaults = Shell::possible_values()
+        .map(|shell| ("shell", Some(shell.get_name()), Some("rustup")))
         .collect::<Vec<_>>();
 
     app.subcommand(
@@ -730,10 +729,10 @@ pub(crate) fn cli() -> ClapCommand<'static> {
             .about("Generate tab-completion scripts for your shell")
             .after_help(COMPLETIONS_HELP)
             .arg_required_else_help(true)
-            .arg(Arg::new("shell").possible_values(&Shell::variants()))
+            .arg(Arg::new("shell").possible_values(Shell::possible_values()))
             .arg(
                 Arg::new("command")
-                    .possible_values(&CompletionCommand::variants())
+                    .possible_values(CompletionCommand::variants())
                     .default_value_ifs(&completion_defaults[..]),
             ),
     )
@@ -1660,16 +1659,17 @@ impl fmt::Display for CompletionCommand {
 fn output_completion_script(shell: Shell, command: CompletionCommand) -> Result<utils::ExitCode> {
     match command {
         CompletionCommand::Rustup => {
-            cli().gen_completions_to("rustup", shell, &mut term2::stdout());
+            // cli().gen_completions_to("rustup", shell, &mut term2::stdout());
+            generate(shell, &mut cli(), "rustup", &mut term2::stdout());
         }
         CompletionCommand::Cargo => {
-            if let shells::Zsh = shell {
+            if let Shell::Zsh = shell {
                 writeln!(term2::stdout(), "#compdef cargo")?;
             }
 
             let script = match shell {
-                shells::Bash => "/etc/bash_completion.d/cargo",
-                shells::Zsh => "/share/zsh/site-functions/_cargo",
+                Shell::Bash => "/etc/bash_completion.d/cargo",
+                Shell::Zsh => "/share/zsh/site-functions/_cargo",
                 _ => {
                     return Err(anyhow!(
                         "{} does not currently support completions for {}",
